@@ -12,7 +12,6 @@ import nltk
 from nltk.corpus import stopwords
 from nrclex import NRCLex
 
-
 df = pd.read_csv('kindle_reviews.csv', index_col=0)
 
 # 删掉无用列
@@ -59,7 +58,45 @@ for product in product_set:
     df = pd.read_csv(csv_path)
     print('write file ' + csv_path)
     df.sort_values(by=['unixReviewTime'], inplace=True)
+    
+    # 计算销量波动
+    def countReviewsInNext7Days(time):
+        df_bool_multi_and = ((df['unixReviewTime'] > time) & (df['unixReviewTime'] - time < 86400 * 7))
+        return df_bool_multi_and.sum()
+    
+    def updateSaleDic(rwDiff, reviews, time):
+        if time in day_sale_dic:
+            return day_sale_dic[time]
+        else:
+            lastSale = reviews - rwDiff
+            saleChange = 0.5 if lastSale == 0 else rwDiff / lastSale
+            day_sale_dic[time] = saleChange
+            return saleChange
+        
+    def setChangeFlag(diff, change):
+        if change == 0:
+            return 0
+        elif change > 0:
+            if abs(change) > 0.15 & diff > 4:
+                return 2
+            else:
+                return 1
+        else:
+            if abs(change) > 0.15 & diff) < 4:
+                return -2
+            else:
+                return -1
+        
     df['reviewsInNext7Days'] = df.unixReviewTime.apply(lambda x: countReviewsInNext7Days(x))
+    df['rwDiff'] = df['reviewsInNext7Days'].shift(1)
+    df['rwDiff'] = df['reviewsInNext7Days'] - df['rwDiff']
+    df['rwDiff'] = df['rwDiff'].fillna(0)
+    valid_days = set(df['unixReviewTime'])
+    day_sale_dic = {}
+    df['saleChange'] = df.apply(lambda x: updateSaleDic(x.rwDiff, x.reviewsInNext7Days, str(x.unixReviewTime)), axis = 1)
+    df['saleChangeFlag'] = df.apply(lambda x: setChangeFlag(x.rwDiff, x.saleChange), axis = 1)
+    df = df.drop(['rwDiff'], axis = 1)
+        
     df['emotions'] = df['reviewText'].apply(lambda x: NRCLex(str(x)).affect_frequencies)
     df = pd.concat([df.drop(['emotions'], axis = 1), df['emotions'].apply(pd.Series)], axis = 1)
     new_csv_path = 'Analyzed_product_data/product_' + str(product) + '.csv'

@@ -57,7 +57,3 @@ def text_lemmatization(text):
     lemma_text = ' '.join(lemma_text)
     return lemma_text
 
-
-def countReviewsInNext7Days(time):
-    df_bool_multi_and = ((df['unixReviewTime'] > time) & (df['unixReviewTime'] - time < 86400 * 7))
-    return df_bool_multi_and.sum()
