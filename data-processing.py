@@ -11,6 +11,7 @@ import pandas as pd
 import nltk
 from nltk.corpus import stopwords
 from nrclex import NRCLex
+import os, glob
 
 df = pd.read_csv('kindle_reviews.csv', index_col=0)
 
@@ -74,15 +75,15 @@ for product in product_set:
             return saleChange
         
     def setChangeFlag(diff, change):
-        if change == 0:
+        if abs(change) <= 0.03:
             return 0
-        elif change > 0:
-            if abs(change) > 0.15 & diff > 4:
+        elif change > 0.03:
+            if abs(change) > 0.15 and diff > 4:
                 return 2
             else:
                 return 1
         else:
-            if abs(change) > 0.15 & diff) < 4:
+            if abs(change) > 0.15 and diff < 4:
                 return -2
             else:
                 return -1
@@ -99,7 +100,13 @@ for product in product_set:
         
     df['emotions'] = df['reviewText'].apply(lambda x: NRCLex(str(x)).affect_frequencies)
     df = pd.concat([df.drop(['emotions'], axis = 1), df['emotions'].apply(pd.Series)], axis = 1)
-    new_csv_path = 'Analyzed_product_data/product_' + str(product) + '.csv'
+    new_csv_path = 'Analyzed_product_data_with_sale_label/product_' + str(product) + '.csv'
     df.to_csv(new_csv_path)
     
+path = "Analyzed_product_data_with_sale_label"
+all_files = glob.glob(os.path.join(path, "product_*.csv"))
+df_from_each_file = (pd.read_csv(f) for f in all_files)
+df_merged = pd.concat(df_from_each_file, ignore_index=True)
+df_merged = df_merged.drop(['anticip'], axis = 1)
+df_merged.to_csv( "merged.csv")
 
